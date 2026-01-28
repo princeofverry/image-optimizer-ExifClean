@@ -11,6 +11,8 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "exif-reader": "^2.0.3",
+    "exifreader": "^4.36.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
