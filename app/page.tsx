@@ -1,32 +1,64 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Loader2, X } from "lucide-react" // Tambah ikon X untuk hapus preview
+import { Loader2, X, UploadCloud } from "lucide-react" // Tambah ikon UploadCloud
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null) // State untuk URL gambar
+  const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false) // State untuk deteksi drag
 
-  // Fungsi saat user pilih file
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+  // Fungsi proses file (dipakai baik dari klik maupun drop)
+  const processFile = (selectedFile: File) => {
     if (selectedFile) {
       setFile(selectedFile)
-      // Buat URL sementara agar gambar bisa muncul
       const objectUrl = URL.createObjectURL(selectedFile)
       setPreview(objectUrl)
     }
   }
 
-  // Fungsi untuk reset/hapus gambar yang dipilih
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (selectedFile) processFile(selectedFile)
+  }
+
+  // --- LOGIKA DRAG & DROP ---
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const droppedFiles = e.dataTransfer.files
+    if (droppedFiles && droppedFiles[0]) {
+      // Pastikan yang di-drop adalah gambar
+      if (droppedFiles[0].type.startsWith("image/")) {
+        processFile(droppedFiles[0])
+      } else {
+        alert("Mohon drop file gambar saja ya! (JPG, PNG, WEBP)")
+      }
+    }
+  }, [])
+  // --------------------------
+
   const clearFile = () => {
     setFile(null)
     setPreview(null)
-    // Reset input file (trik biar bisa pilih file yang sama lagi kalau mau)
     const input = document.getElementById("picture") as HTMLInputElement
     if (input) input.value = ""
   }
@@ -56,7 +88,7 @@ export default function Home() {
       window.URL.revokeObjectURL(url)
       
       alert("Berhasil! Foto bersih sudah terdownload 🚀")
-      clearFile() // Reset setelah download
+      clearFile()
     } catch (error) {
       console.error(error)
       alert("Gagal memproses gambar.")
@@ -79,36 +111,61 @@ export default function Home() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle>Upload Image</CardTitle>
-          <CardDescription>Format supported: JPG, PNG, WEBP</CardDescription>
+          <CardDescription>Drag & drop atau klik untuk pilih file</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           
-          {/* AREA PREVIEW GAMBAR */}
           {preview ? (
-            <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-lg border bg-gray-100">
+            <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-lg border bg-gray-100 shadow-sm">
               <img 
                 src={preview} 
                 alt="Preview" 
                 className="h-full w-full object-contain" 
               />
-              {/* Tombol X Kecil di pojok kanan atas preview */}
               <button 
                 onClick={clearFile}
-                className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                className="absolute right-2 top-2 rounded-full bg-red-500 p-1.5 text-white hover:bg-red-600 transition-colors"
                 title="Hapus gambar"
               >
                 <X size={16} />
               </button>
             </div>
           ) : (
-            // Kalau belum ada gambar, tampilkan input file biasa
-            <div className="grid w-full max-w-sm items-center gap-1.5">
+            // AREA DRAG & DROP
+            <div 
+              className={`
+                relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed 
+                p-8 text-center transition-colors
+                ${isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50"}
+              `}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="mb-4 rounded-full bg-blue-100 p-3 text-blue-600">
+                <UploadCloud size={24} />
+              </div>
+              <p className="mb-2 text-sm font-medium text-gray-700">
+                Drag & drop fotomu di sini
+              </p>
+              <p className="mb-4 text-xs text-gray-500">
+                Atau klik tombol di bawah ini
+              </p>
+              
+              {/* Input file kita sembunyikan tapi tetap berfungsi lewat label/tombol */}
               <Input 
                 id="picture" 
                 type="file" 
                 accept="image/*" 
+                className="hidden" 
                 onChange={handleFileChange} 
               />
+              <label 
+                htmlFor="picture"
+                className="cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                Pilih File
+              </label>
             </div>
           )}
 
